@@ -64,14 +64,79 @@ public class GerenciadorAtendimento {
     }
     
     public String relatorioAtendimento() {
-        StringBuilder relatorio = new StringBuilder();
-        int totalAtendimentos = historicoGeral1.getTamanho() + historicoGeral2.getTamanho() + historicoPreferencial.getTamanho();
+    	int totalAtendimentos = historicoGeral1.getTamanho() + historicoGeral2.getTamanho() + historicoPreferencial.getTamanho();
 
-        relatorio.append("===== RELATÓRIO =====\n\n");
-        relatorio.append("TOTAL DE ATENDIMENTOS: ").append(totalAtendimentos).append("\n\n");
-        relatorio.append("Guichê Geral 1: ").append(historicoGeral1.getTamanho()).append("\n");
-        relatorio.append("Guichê Geral 2: ").append(historicoGeral2.getTamanho()).append("\n");
-        relatorio.append("Guichê Preferencial: ").append(historicoPreferencial.getTamanho()).append("\n\n");
+        StringBuilder relatorio = new StringBuilder();
+        relatorio.append("=========================================\n");
+        relatorio.append("            RELATÓRIO FINAL              \n");
+        relatorio.append("=========================================\n\n");
+        relatorio.append("TOTAL DE ATENDIMENTOS REAIS: ").append(totalAtendimentos).append("\n");
+        relatorio.append("  - Guichê Geral 1: ").append(historicoGeral1.getTamanho()).append("\n");
+        relatorio.append("  - Guichê Geral 2: ").append(historicoGeral2.getTamanho()).append("\n");
+        relatorio.append("  - Guichê Preferencial: ").append(historicoPreferencial.getTamanho()).append("\n\n");
+
+        if (totalAtendimentos == 0) {
+            relatorio.append("Nenhum atendimento registrado para ordenação.\n");
+            return relatorio.toString();
+        }
+
+        // Criando a base de dados unificada em um array fixo para ordenação
+        RegistroAtendimento[] baseDados1 = new RegistroAtendimento[totalAtendimentos];
+        RegistroAtendimento[] baseDados2 = new RegistroAtendimento[totalAtendimentos];
+        int index = 0;
+
+        // Descarrega Historico Geral 1 temporariamente sem destruir a pilha original
+        Pilha<RegistroAtendimento> tempG1 = new Pilha<>(50);
+        while (!historicoGeral1.estaVazia()) {
+            RegistroAtendimento r = historicoGeral1.pop();
+            baseDados1[index] = r;
+            baseDados2[index] = r;
+            index++;
+            tempG1.push(r);
+        }
+        while (!tempG1.estaVazia()) { historicoGeral1.push(tempG1.pop()); }
+
+        // Descarrega Historico Geral 2
+        Pilha<RegistroAtendimento> tempG2 = new Pilha<>(50);
+        while (!historicoGeral2.estaVazia()) {
+            RegistroAtendimento r = historicoGeral2.pop();
+            baseDados1[index] = r;
+            baseDados2[index] = r;
+            index++;
+            tempG2.push(r);
+        }
+        while (!tempG2.estaVazia()) { historicoGeral2.push(tempG2.pop()); }
+
+        // Descarrega Historico Preferencial
+        Pilha<RegistroAtendimento> tempP = new Pilha<>(50);
+        while (!historicoPreferencial.estaVazia()) {
+            RegistroAtendimento r = historicoPreferencial.pop();
+            baseDados1[index] = r;
+            baseDados2[index] = r;
+            index++;
+            tempP.push(r);
+        }
+        while (!tempP.estaVazia()) { historicoPreferencial.push(tempP.pop()); }
+
+        // --- ORDENAÇÃO 1: CRESCENTE POR TEMPO DE ESPERA ---
+        Ordenador.ordenarPorTempoEspera(baseDados1, 0, totalAtendimentos - 1);
+        relatorio.append("-----------------------------------------\n");
+        relatorio.append(" LISTA: ORDEM CRESCENTE DE TEMPO DE ESPERA \n");
+        relatorio.append("-----------------------------------------\n");
+        for (RegistroAtendimento r : baseDados1) {
+            relatorio.append(String.format("ID: %d | Tipo: %s | Espera: %.2f min\n", 
+                    r.getIdCliente(), r.getTipo(), r.getTempoEspera()));
+        }
+
+        // --- ORDENAÇÃO 2: ORDEM CRONOLÓGICA (HORA ATENDIMENTO) ---
+        Ordenador.ordenarPorHoraAtendimento(baseDados2, 0, totalAtendimentos - 1);
+        relatorio.append("\n-----------------------------------------\n");
+        relatorio.append(" LISTA: ORDEM CRONOLÓGICA DE ATENDIMENTO \n");
+        relatorio.append("-----------------------------------------\n");
+        for (RegistroAtendimento r : baseDados2) {
+            relatorio.append(String.format("ID: %d | Tipo: %s | Horário Inicial: %.2f h\n", 
+                    r.getIdCliente(), r.getTipo(), r.getHoraAtendimento()));
+        }
 
         return relatorio.toString();
     }
